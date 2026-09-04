@@ -147,6 +147,52 @@
   .storage-flag svg{width:13px;height:13px;flex:none;opacity:.7;}
   footer{text-align:center;color:var(--muted);font-size:12px;padding:20px 16px 0;line-height:1.7;}
   .hide{display:none !important;}
+  /* ==================== CSS เสริม ==================== */
+.rrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, .12);
+}
+.rrow:last-child {
+  border-bottom: none;
+}
+.rrow .rlabel {
+  opacity: .8;
+  font-size: .9rem;
+}
+.rrow .rvalue {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.rbox {
+  background: rgba(255, 255, 255, .05);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+.rbox b {
+  display: block;
+  font-size: 1.1rem;
+  margin-top: 2px;
+}
+.sub-h {
+  margin: 14px 0 6px;
+  font-size: .95rem;
+  opacity: .75;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.warn { color: #ffb020; }
+.ok   { color: #3ddc84; }
+.bad  { color: #ff5c5c; }
 </style>
 </head>
 <body>
@@ -545,6 +591,98 @@
       <p class="note">สูตร: Q(kW) = Flow(L/s) × 4.186 × ΔT(°C) &nbsp;•&nbsp; 1 TR = 3.5168 kW &nbsp;•&nbsp; ใช้ค่าคุณสมบัติของน้ำล้วน หากใช้ไกลคอลผสมควรปรับ Specific Heat ตามความเข้มข้นจริง</p>
     </div>
   </section>
+  <!-- ===== AIR FLOW ===== -->
+<div class="card">
+  <h2>Air Flow <span class="badge">Duct / Load</span></h2>
+  <p class="desc">หาปริมาณลมจากความเร็ว×พื้นที่ท่อลม หรือจากโหลด Sensible ที่ต้องการ</p>
+
+  <div class="field row">
+    <label>วิธีคำนวณ</label>
+    <select id="af-mode" onchange="afToggle()">
+      <option value="duct">จากท่อลม (Velocity × Area)</option>
+      <option value="load">จากโหลด Sensible (ΔT)</option>
+    </select>
+  </div>
+
+  <div id="af-duct-box">
+    <div class="field row">
+      <label>รูปทรงท่อ</label>
+      <select id="af-shape" onchange="afToggle()">
+        <option value="rect">สี่เหลี่ยม (W × H)</option>
+        <option value="round">กลม (Ø)</option>
+      </select>
+    </div>
+    <div class="field row" id="af-rect-w"><label>กว้าง W (mm)</label><input type="number" id="af-w" value="600"></div>
+    <div class="field row" id="af-rect-h"><label>สูง H (mm)</label><input type="number" id="af-h" value="400"></div>
+    <div class="field row" id="af-round-d"><label>เส้นผ่านศูนย์กลาง Ø (mm)</label><input type="number" id="af-d" value="400"></div>
+    <div class="field row"><label>ความเร็วลม (m/s)</label><input type="number" id="af-vel" value="6.0" step="0.1"></div>
+  </div>
+
+  <div id="af-load-box">
+    <div class="field row"><label>Sensible Load (kW)</label><input type="number" id="af-q" value="10" step="0.1"></div>
+    <div class="field row"><label>ΔT อากาศ (°C)</label><input type="number" id="af-dt" value="11" step="0.1"></div>
+    <div class="field row"><label>อุณหภูมิลมจ่ายเฉลี่ย (°C)</label><input type="number" id="af-tavg" value="18" step="0.5"></div>
+  </div>
+
+  <button class="calc-btn" onclick="calcAirFlow()">คำนวณ Air Flow</button>
+  <div class="readout" id="af-out"></div>
+</div>
+
+<!-- ===== AHU COOLING LOAD ===== -->
+<div class="card">
+  <h2>AHU Cooling Load <span class="badge hi">Enthalpy</span></h2>
+  <p class="desc">คำนวณภาระทำความเย็นจริงของ AHU/FCU จากลมเข้า–ออกคอยล์ (แยก Sensible / Latent)</p>
+
+  <div class="field row">
+    <label>ปริมาณลม</label>
+    <input type="number" id="ahu-flow" value="2000" step="10">
+    <select id="ahu-flow-unit">
+      <option value="cmh">m³/hr</option>
+      <option value="cfm">CFM</option>
+      <option value="lps">L/s</option>
+    </select>
+  </div>
+  <div class="field row"><label>ลมเข้า DB (°C)</label><input type="number" id="ahu-t1" value="27" step="0.1"></div>
+  <div class="field row"><label>ลมเข้า RH (%)</label><input type="number" id="ahu-rh1" value="60" step="1"></div>
+  <div class="field row"><label>ลมออก DB (°C)</label><input type="number" id="ahu-t2" value="14" step="0.1"></div>
+  <div class="field row"><label>ลมออก RH (%)</label><input type="number" id="ahu-rh2" value="95" step="1"></div>
+  <div class="field row"><label>ความดันบรรยากาศ (kPa)</label><input type="number" id="ahu-p" value="101.325" step="0.1"></div>
+
+  <button class="calc-btn" onclick="calcAHULoad()">คำนวณ Cooling Load</button>
+  <div class="readout" id="ahu-out"></div>
+</div>
+
+<!-- ===== ACH ===== -->
+<div class="card">
+  <h2>ACH — Air Change per Hour</h2>
+  <p class="desc">จำนวนรอบการเปลี่ยนอากาศต่อชั่วโมง ใช้ตรวจการระบายอากาศ/ห้องสะอาด</p>
+
+  <div class="field row">
+    <label>ปริมาณลม</label>
+    <input type="number" id="ach-flow" value="1200" step="10">
+    <select id="ach-unit">
+      <option value="cmh">m³/hr</option>
+      <option value="cfm">CFM</option>
+      <option value="lps">L/s</option>
+    </select>
+  </div>
+  <div class="field row">
+    <label>ระบุห้องแบบ</label>
+    <select id="ach-mode" onchange="achToggle()">
+      <option value="dim">กว้าง × ยาว × สูง</option>
+      <option value="vol">ปริมาตรโดยตรง (m³)</option>
+    </select>
+  </div>
+  <div id="ach-dim-box">
+    <div class="field row"><label>กว้าง (m)</label><input type="number" id="ach-w" value="8" step="0.1"></div>
+    <div class="field row"><label>ยาว (m)</label><input type="number" id="ach-l" value="10" step="0.1"></div>
+    <div class="field row"><label>สูง (m)</label><input type="number" id="ach-h" value="2.7" step="0.1"></div>
+  </div>
+  <div class="field row" id="ach-vol-box"><label>ปริมาตรห้อง (m³)</label><input type="number" id="ach-v" value="216" step="1"></div>
+
+  <button class="calc-btn" onclick="calcACH()">คำนวณ ACH</button>
+  <div class="readout" id="ach-out"></div>
+</div>
 
   <!-- ================= CALIBRATION ================= -->
   <section class="panel hide" id="panel-cal">
