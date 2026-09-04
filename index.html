@@ -540,7 +540,77 @@
       <p class="note">ค่าอ้างอิงทั่วไป: Subcooling ราว <b>4–8°C</b> สำหรับระบบ TXV — ต่ำเกินไปอาจบ่งชี้น้ำยาไม่พอ/มีการรั่ว สูงเกินไปอาจบ่งชี้น้ำยาล้นหรือตัวกรองอุดตัน</p>
     </div>
   </section>
+  <!-- ================= Psychrometric ================= -->
+  <button class="tab-btn" data-tab="psy">Psychrometric</button>
+  <!-- ===== PSYCHROMETRIC PANEL ===== -->
+<section class="panel hide" id="panel-psy">
 
+  <!-- A. AIR PROPERTIES -->
+  <div class="card">
+    <h2>คุณสมบัติอากาศ <span class="badge">ASHRAE</span></h2>
+    <p class="desc">ป้อนค่าที่วัดได้ 2 ค่า ระบบจะหาสมบัติอากาศชื้นที่เหลือให้ครบ</p>
+
+    <div class="field row">
+      <label>ข้อมูลที่มี</label>
+      <select id="psy-in" onchange="psyToggle()">
+        <option value="rh">DB + RH</option>
+        <option value="wb">DB + WB</option>
+        <option value="dp">DB + Dew Point</option>
+        <option value="w">DB + Humidity Ratio</option>
+      </select>
+    </div>
+    <div class="field row"><label>Dry Bulb (°C)</label><input type="number" id="psy-db" value="26" step="0.1"></div>
+    <div class="field row" id="psy-r-rh"><label>Relative Humidity (%)</label><input type="number" id="psy-rh" value="55" step="1"></div>
+    <div class="field row" id="psy-r-wb"><label>Wet Bulb (°C)</label><input type="number" id="psy-wb" value="19" step="0.1"></div>
+    <div class="field row" id="psy-r-dp"><label>Dew Point (°C)</label><input type="number" id="psy-dp" value="16" step="0.1"></div>
+    <div class="field row" id="psy-r-w"><label>Humidity Ratio (g/kg)</label><input type="number" id="psy-w" value="11" step="0.1"></div>
+    <div class="field row"><label>ความสูงเหนือระดับน้ำทะเล (m)</label><input type="number" id="psy-alt" value="0" step="10"></div>
+
+    <button class="calc-btn" onclick="calcPsy()">คำนวณสมบัติอากาศ</button>
+    <div class="readout" id="psy-out"></div>
+  </div>
+
+  <!-- B. COOLING PROCESS -->
+  <div class="card">
+    <h2>Cooling &amp; Dehumidification <span class="badge hi">Total / Sens / Lat</span></h2>
+    <p class="desc">วิเคราะห์กระบวนการที่คอยล์เย็น — แยก Sensible / Latent, SHR, น้ำคอนเดนเสท และ ADP</p>
+
+    <div class="field row">
+      <label>ปริมาณลม</label>
+      <input type="number" id="pc-flow" value="2000" step="10">
+      <select id="pc-unit">
+        <option value="cmh">m³/hr</option>
+        <option value="cfm">CFM</option>
+        <option value="lps">L/s</option>
+      </select>
+    </div>
+    <div class="field row"><label>เข้าคอยล์ DB (°C)</label><input type="number" id="pc-t1" value="27" step="0.1"></div>
+    <div class="field row"><label>เข้าคอยล์ RH (%)</label><input type="number" id="pc-rh1" value="60" step="1"></div>
+    <div class="field row"><label>ออกคอยล์ DB (°C)</label><input type="number" id="pc-t2" value="13.5" step="0.1"></div>
+    <div class="field row"><label>ออกคอยล์ RH (%)</label><input type="number" id="pc-rh2" value="95" step="1"></div>
+    <div class="field row"><label>ความสูงเหนือระดับน้ำทะเล (m)</label><input type="number" id="pc-alt" value="0" step="10"></div>
+
+    <button class="calc-btn" onclick="calcPsyProcess()">คำนวณภาระทำความเย็น</button>
+    <div class="readout" id="pc-out"></div>
+  </div>
+
+  <!-- C. MIXING -->
+  <div class="card">
+    <h2>Air Mixing <span class="badge">OA + RA</span></h2>
+    <p class="desc">หาสภาวะลมผสมก่อนเข้าคอยล์ ระหว่างลมภายนอก (OA) กับลมกลับ (RA)</p>
+
+    <div class="field row"><label>OA — ปริมาณลม (m³/hr)</label><input type="number" id="mx-f1" value="500" step="10"></div>
+    <div class="field row"><label>OA — DB (°C)</label><input type="number" id="mx-t1" value="35" step="0.1"></div>
+    <div class="field row"><label>OA — RH (%)</label><input type="number" id="mx-rh1" value="60" step="1"></div>
+    <div class="field row"><label>RA — ปริมาณลม (m³/hr)</label><input type="number" id="mx-f2" value="1500" step="10"></div>
+    <div class="field row"><label>RA — DB (°C)</label><input type="number" id="mx-t2" value="25" step="0.1"></div>
+    <div class="field row"><label>RA — RH (%)</label><input type="number" id="mx-rh2" value="55" step="1"></div>
+
+    <button class="calc-btn" onclick="calcPsyMix()">คำนวณลมผสม</button>
+    <div class="readout" id="mx-out"></div>
+  </div>
+
+</section>
   <!-- ================= CAPACITY ================= -->
   <section class="panel hide" id="panel-cap">
     <div class="card">
@@ -1965,6 +2035,308 @@ async function exportLogCSV(){
   }
 }
 renderLog();
+  /* ============ HELPERS ============ */
+const R = (l,v) => `<div class="rrow"><span class="rlabel">${l}</span><span class="rvalue">${v}</span></div>`;
+const BOX = (l,v) => `<div class="rbox"><span class="rlabel">${l}</span><b>${v}</b></div>`;
+const N = id => parseFloat(document.getElementById(id).value);
+const SH = (id,on) => document.getElementById(id).style.display = on ? '' : 'none';
+
+// แปลงปริมาณลม -> m³/s
+function airToCms(v,u){
+  if(u==='cfm') return v*0.000471947;
+  if(u==='lps') return v/1000;
+  return v/3600;               // cmh
+}
+
+/* ============ PSYCHROMETRIC CORE (ASHRAE Fund. Ch.1) ============ */
+const PSY = {
+  // ความดันบรรยากาศจากความสูง (kPa)
+  patm(alt){ return 101.325*Math.pow(1-2.25577e-5*alt, 5.2559); },
+
+  // ความดันไออิ่มตัว (kPa) — t เป็น °C
+  pws(t){
+    const T = t+273.15; let ln;
+    if(t < 0){
+      ln = -5674.5359/T + 6.3925247 - 9.677843e-3*T + 6.2215701e-7*T*T
+         + 2.0747825e-9*T**3 - 9.484024e-13*T**4 + 4.1635019*Math.log(T);
+    } else {
+      ln = -5800.2206/T + 1.3914993 - 0.048640239*T + 4.1764768e-5*T*T
+         - 1.4452093e-8*T**3 + 6.5459673*Math.log(T);
+    }
+    return Math.exp(ln)/1000;
+  },
+  W(pw,p){ return 0.621945*pw/(p-pw); },
+  Ws(t,p){ return this.W(Math.min(this.pws(t), p*0.9999), p); },
+  h(t,W){ return 1.006*t + W*(2501 + 1.86*t); },          // kJ/kg dry air
+  v(t,W,p){ return 0.287042*(t+273.15)*(1+1.607858*W)/p; },// m³/kg dry air
+  pw(W,p){ return p*W/(0.621945+W); },
+
+  dewPoint(pw){
+    if(pw<=0) return -60;
+    const a = Math.log(pw);
+    let td = 6.54 + 14.526*a + 0.7389*a*a + 0.09486*a**3 + 0.4569*Math.pow(pw,0.1984);
+    if(td < 0) td = 6.09 + 12.608*a + 0.4959*a*a;
+    return td;
+  },
+
+  wetBulb(t,W,p){
+    let lo=-30, hi=t, mid=t;
+    for(let i=0;i<80;i++){
+      mid=(lo+hi)/2;
+      const Wsw = this.Ws(mid,p);
+      const Wc  = ((2501-2.326*mid)*Wsw - 1.006*(t-mid))/(2501+1.86*t-4.186*mid);
+      if(Wc > W) hi=mid; else lo=mid;
+    }
+    return mid;
+  },
+
+  // สร้าง state จาก DB + ค่าที่สอง
+  state(t, type, val, p){
+    let W;
+    if(type==='rh'){ W = this.W(Math.max(val,0.01)/100*this.pws(t), p); }
+    else if(type==='wb'){
+      const Wsw=this.Ws(val,p);
+      W = ((2501-2.326*val)*Wsw - 1.006*(t-val))/(2501+1.86*t-4.186*val);
+    }
+    else if(type==='dp'){ W = this.W(this.pws(val), p); }
+    else { W = val/1000; }
+    if(W < 0) W = 0;
+    const Wsat = this.Ws(t,p);
+    const sat  = W >= Wsat*0.9999;
+    if(W > Wsat) W = Wsat;
+    const pw  = this.pw(W,p);
+    const rh  = Math.min(100, pw/this.pws(t)*100);
+    return {
+      t, W, p, pw, rh, sat,
+      h:  this.h(t,W),
+      v:  this.v(t,W,p),
+      rho:(1+W)/this.v(t,W,p),
+      dp: this.dewPoint(pw),
+      wb: this.wetBulb(t,W,p)
+    };
+  }
+};
+
+/* ============ 1. AIR FLOW ============ */
+function afToggle(){
+  const m = document.getElementById('af-mode').value;
+  const s = document.getElementById('af-shape').value;
+  SH('af-duct-box', m==='duct'); SH('af-load-box', m==='load');
+  SH('af-rect-w', s==='rect'); SH('af-rect-h', s==='rect'); SH('af-round-d', s==='round');
+}
+
+function calcAirFlow(){
+  const m = document.getElementById('af-mode').value;
+  let cms, extra='';
+
+  if(m==='duct'){
+    const s = document.getElementById('af-shape').value;
+    let A, Deq;
+    if(s==='rect'){
+      const w=N('af-w')/1000, h=N('af-h')/1000;
+      if(!(w>0&&h>0)) return document.getElementById('af-out').innerHTML='<div class="bad">กรอกขนาดท่อให้ถูกต้อง</div>';
+      A = w*h;
+      Deq = 1.30*Math.pow(w*h,0.625)/Math.pow(w+h,0.25); // equivalent dia.
+      extra = R('พื้นที่หน้าตัด', A.toFixed(4)+' m²') + R('Equivalent Ø', (Deq*1000).toFixed(0)+' mm');
+    } else {
+      const d=N('af-d')/1000;
+      if(!(d>0)) return document.getElementById('af-out').innerHTML='<div class="bad">กรอกขนาดท่อให้ถูกต้อง</div>';
+      A = Math.PI*d*d/4;
+      extra = R('พื้นที่หน้าตัด', A.toFixed(4)+' m²');
+    }
+    const vel = N('af-vel');
+    cms = A*vel;
+    let note = vel<=5 ? '<span class="ok">เงียบ เหมาะกับ main duct ในอาคาร</span>'
+             : vel<=8 ? '<span class="ok">อยู่ในช่วงออกแบบปกติ</span>'
+             : vel<=12? '<span class="warn">ค่อนข้างสูง ระวังเสียงดัง</span>'
+             : '<span class="bad">สูงเกิน แนะนำขยายขนาดท่อ</span>';
+    extra += R('ประเมินความเร็ว', note);
+  } else {
+    const q=N('af-q'), dt=N('af-dt'), tavg=N('af-tavg');
+    if(!(dt>0)) return document.getElementById('af-out').innerHTML='<div class="bad">ΔT ต้องมากกว่า 0</div>';
+    const rho = 101.325/(0.287042*(tavg+273.15));
+    cms = q/(rho*1.006*dt);
+    extra = R('ความหนาแน่นอากาศ', rho.toFixed(3)+' kg/m³')
+          + R('สูตร', 'V = Q / (ρ · cp · ΔT)');
+  }
+
+  document.getElementById('af-out').innerHTML =
+    `<div class="rgrid">
+      ${BOX('m³/hr', (cms*3600).toFixed(0))}
+      ${BOX('CFM', (cms*2118.88).toFixed(0))}
+      ${BOX('L/s', (cms*1000).toFixed(1))}
+     </div>` + extra;
+}
+
+/* ============ 2. AHU COOLING LOAD ============ */
+function calcAHULoad(){
+  const p = N('ahu-p');
+  const cms = airToCms(N('ahu-flow'), document.getElementById('ahu-flow-unit').value);
+  const s1 = PSY.state(N('ahu-t1'),'rh',N('ahu-rh1'),p);
+  const s2 = PSY.state(N('ahu-t2'),'rh',N('ahu-rh2'),p);
+
+  const mda = cms/s1.v;
+  const Qt  = mda*(s1.h - s2.h);
+  const Qs  = mda*(1.006+1.86*s1.W)*(s1.t-s2.t);
+  const Ql  = Qt - Qs;
+  const SHR = Qt!==0 ? Qs/Qt : 0;
+  const cond= mda*(s1.W-s2.W)*3600;
+
+  document.getElementById('ahu-out').innerHTML =
+    `<div class="rgrid">
+      ${BOX('Total Load', Qt.toFixed(2)+' kW')}
+      ${BOX('Sensible', Qs.toFixed(2)+' kW')}
+      ${BOX('Latent', Ql.toFixed(2)+' kW')}
+      ${BOX('SHR', SHR.toFixed(3))}
+     </div>
+     <div class="sub-h">สรุป</div>` +
+    R('Total Capacity', (Qt/3.5168).toFixed(2)+' TR  ·  '+(Qt*3412.14).toFixed(0)+' BTU/hr') +
+    R('มวลลมแห้ง (ṁ)', mda.toFixed(3)+' kg/s') +
+    R('Enthalpy เข้า / ออก', s1.h.toFixed(2)+' → '+s2.h.toFixed(2)+' kJ/kg') +
+    R('Humidity Ratio เข้า / ออก', (s1.W*1000).toFixed(2)+' → '+(s2.W*1000).toFixed(2)+' g/kg') +
+    R('WB เข้า / ออก', s1.wb.toFixed(1)+' → '+s2.wb.toFixed(1)+' °C') +
+    R('น้ำคอนเดนเสท', cond.toFixed(2)+' L/hr') +
+    R('อัตราน้ำเย็นที่ต้องใช้ (ΔT 5.5K)', (Qt/(4.186*5.5)).toFixed(2)+' L/s  ·  '+(Qt/(4.186*5.5)*15.85).toFixed(1)+' GPM') +
+    R('ประเมิน SHR', SHR>=0.85 ? '<span class="warn">Sensible เด่นมาก — ลดความชื้นได้น้อย</span>'
+        : SHR>=0.65 ? '<span class="ok">ปกติสำหรับงานปรับอากาศทั่วไป</span>'
+        : '<span class="warn">Latent สูง — โหลดความชื้นมาก ตรวจ OA / การรั่วซึม</span>');
+}
+
+/* ============ 3. ACH ============ */
+function achToggle(){
+  const m=document.getElementById('ach-mode').value;
+  SH('ach-dim-box', m==='dim'); SH('ach-vol-box', m==='vol');
+}
+
+function calcACH(){
+  const cms = airToCms(N('ach-flow'), document.getElementById('ach-unit').value);
+  const vol = document.getElementById('ach-mode').value==='dim'
+            ? N('ach-w')*N('ach-l')*N('ach-h') : N('ach-v');
+  if(!(vol>0)) return document.getElementById('ach-out').innerHTML='<div class="bad">ปริมาตรห้องต้องมากกว่า 0</div>';
+
+  const ach = cms*3600/vol;
+  const cls = ach<4 ? '<span class="warn">ต่ำ — เหมาะกับห้องพัก/สำนักงานเบา</span>'
+            : ach<10? '<span class="ok">ทั่วไป — สำนักงาน/ร้านค้า</span>'
+            : ach<20? '<span class="ok">สูง — ครัว/ห้องประชุมหนาแน่น</span>'
+            : '<span class="ok">สูงมาก — Cleanroom / ห้องแยกโรค</span>';
+
+  document.getElementById('ach-out').innerHTML =
+    `<div class="rgrid">
+      ${BOX('ACH', ach.toFixed(2)+' /hr')}
+      ${BOX('ปริมาตรห้อง', vol.toFixed(1)+' m³')}
+      ${BOX('Air Flow', (cms*3600).toFixed(0)+' m³/hr')}
+     </div>` +
+    R('เวลาเปลี่ยนอากาศ 1 รอบ', (60/ach).toFixed(1)+' นาที') +
+    R('ลมต่อพื้นที่ (สมมติสูง 2.7 m)', (cms*1000/(vol/2.7)).toFixed(2)+' L/s·m²') +
+    R('ระดับการระบายอากาศ', cls);
+}
+
+/* ============ 4. PSYCHROMETRIC — PROPERTIES ============ */
+function psyToggle(){
+  const m=document.getElementById('psy-in').value;
+  SH('psy-r-rh', m==='rh'); SH('psy-r-wb', m==='wb');
+  SH('psy-r-dp', m==='dp'); SH('psy-r-w',  m==='w');
+}
+
+function calcPsy(){
+  const p = PSY.patm(N('psy-alt'));
+  const m = document.getElementById('psy-in').value;
+  const val = m==='rh'?N('psy-rh') : m==='wb'?N('psy-wb') : m==='dp'?N('psy-dp') : N('psy-w');
+  const s = PSY.state(N('psy-db'), m, val, p);
+
+  document.getElementById('psy-out').innerHTML =
+    `<div class="rgrid">
+      ${BOX('Dry Bulb', s.t.toFixed(1)+' °C')}
+      ${BOX('Wet Bulb', s.wb.toFixed(1)+' °C')}
+      ${BOX('Dew Point', s.dp.toFixed(1)+' °C')}
+      ${BOX('RH', s.rh.toFixed(1)+' %')}
+     </div>
+     <div class="sub-h">สมบัติเชิงเทอร์โมไดนามิกส์</div>` +
+    R('Humidity Ratio (W)', (s.W*1000).toFixed(3)+' g/kg dry air') +
+    R('Enthalpy (h)', s.h.toFixed(2)+' kJ/kg dry air') +
+    R('Specific Volume (v)', s.v.toFixed(4)+' m³/kg dry air') +
+    R('Density (ρ)', s.rho.toFixed(4)+' kg/m³') +
+    R('Vapor Pressure (pw)', s.pw.toFixed(3)+' kPa') +
+    R('Saturation Pressure (pws)', PSY.pws(s.t).toFixed(3)+' kPa') +
+    R('Saturation W', (PSY.Ws(s.t,p)*1000).toFixed(2)+' g/kg') +
+    R('Degree of Saturation', (s.W/PSY.Ws(s.t,p)*100).toFixed(1)+' %') +
+    R('Barometric Pressure', p.toFixed(3)+' kPa') +
+    R('สถานะ', s.sat?'<span class="warn">อากาศอิ่มตัว (บนเส้น 100% RH)</span>':'<span class="ok">อากาศชื้นปกติ</span>');
+}
+
+/* ============ 5. PSYCHROMETRIC — COOLING PROCESS ============ */
+function calcPsyProcess(){
+  const p = PSY.patm(N('pc-alt'));
+  const cms = airToCms(N('pc-flow'), document.getElementById('pc-unit').value);
+  const s1 = PSY.state(N('pc-t1'),'rh',N('pc-rh1'),p);
+  const s2 = PSY.state(N('pc-t2'),'rh',N('pc-rh2'),p);
+
+  const mda = cms/s1.v;
+  const Qt  = mda*(s1.h-s2.h);
+  const Qs  = mda*(1.006+1.86*s1.W)*(s1.t-s2.t);
+  const Ql  = Qt-Qs;
+  const SHR = Qt!==0 ? Qs/Qt : 0;
+
+  let adp=null;
+  const slope = (s1.t-s2.t)!==0 ? (s1.W-s2.W)/(s1.t-s2.t) : 0;
+  for(let t=s2.t; t>=-5; t-=0.05){
+    const Wline = s2.W + slope*(t-s2.t);
+    if(Wline >= PSY.Ws(t,p)){ adp=t; break; }
+  }
+  const BF = (adp!==null && (s1.t-adp)!==0) ? (s2.t-adp)/(s1.t-adp) : null;
+
+  document.getElementById('pc-out').innerHTML =
+    `<div class="rgrid">
+      ${BOX('Total (Qt)', Qt.toFixed(2)+' kW')}
+      ${BOX('Sensible (Qs)', Qs.toFixed(2)+' kW')}
+      ${BOX('Latent (Ql)', Ql.toFixed(2)+' kW')}
+      ${BOX('SHR', SHR.toFixed(3))}
+     </div>
+     <div class="sub-h">รายละเอียดกระบวนการ</div>` +
+    R('Total Capacity', (Qt/3.5168).toFixed(2)+' TR  ·  '+(Qt*3412.14).toFixed(0)+' BTU/hr') +
+    R('State 1 (เข้า)', `${s1.t.toFixed(1)}°C DB / ${s1.wb.toFixed(1)}°C WB / ${(s1.W*1000).toFixed(2)} g/kg / ${s1.h.toFixed(2)} kJ/kg`) +
+    R('State 2 (ออก)', `${s2.t.toFixed(1)}°C DB / ${s2.wb.toFixed(1)}°C WB / ${(s2.W*1000).toFixed(2)} g/kg / ${s2.h.toFixed(2)} kJ/kg`) +
+    R('Δh', (s1.h-s2.h).toFixed(2)+' kJ/kg') +
+    R('ΔW', ((s1.W-s2.W)*1000).toFixed(2)+' g/kg') +
+    R('น้ำคอนเดนเสท', (mda*(s1.W-s2.W)*3600).toFixed(2)+' L/hr') +
+    R('Apparatus Dew Point (ADP)', adp!==null? adp.toFixed(1)+' °C' : '<span class="warn">หาไม่ได้ (Sensible ล้วน)</span>') +
+    R('Bypass Factor (BF)', BF!==null? BF.toFixed(3)+`  (Contact Factor ${(1-BF).toFixed(3)})` : '—') +
+    R('ประเมินคอยล์', BF===null?'—' : BF<0.05?'<span class="ok">คอยล์แถวมาก ประสิทธิภาพสูง</span>'
+        : BF<0.15?'<span class="ok">ปกติ (4–6 แถว)</span>'
+        : '<span class="warn">BF สูง — ลมบายพาสมาก ตรวจความสะอาด/จำนวนแถวคอยล์</span>');
+}
+
+/* ============ 6. PSYCHROMETRIC — MIXING ============ */
+function calcPsyMix(){
+  const p = 101.325;
+  const f1=N('mx-f1'), f2=N('mx-f2');
+  const s1=PSY.state(N('mx-t1'),'rh',N('mx-rh1'),p);
+  const s2=PSY.state(N('mx-t2'),'rh',N('mx-rh2'),p);
+  const m1=(f1/3600)/s1.v, m2=(f2/3600)/s2.v, mt=m1+m2;
+  if(!(mt>0)) return document.getElementById('mx-out').innerHTML='<div class="bad">กรอกปริมาณลมให้ถูกต้อง</div>';
+
+  const Wm=(m1*s1.W+m2*s2.W)/mt;
+  const hm=(m1*s1.h+m2*s2.h)/mt;
+  const tm=(hm-2501*Wm)/(1.006+1.86*Wm);
+  const sm=PSY.state(tm,'w',Wm*1000,p);
+  const oaPct=f1/(f1+f2)*100;
+
+  document.getElementById('mx-out').innerHTML =
+    `<div class="rgrid">
+      ${BOX('Mixed DB', sm.t.toFixed(2)+' °C')}
+      ${BOX('Mixed WB', sm.wb.toFixed(2)+' °C')}
+      ${BOX('Mixed RH', sm.rh.toFixed(1)+' %')}
+      ${BOX('%OA', oaPct.toFixed(1)+' %')}
+     </div>` +
+    R('Mixed Humidity Ratio', (Wm*1000).toFixed(3)+' g/kg') +
+    R('Mixed Enthalpy', hm.toFixed(2)+' kJ/kg') +
+    R('Mixed Dew Point', sm.dp.toFixed(1)+' °C') +
+    R('มวลลมรวม', mt.toFixed(3)+' kg/s  ·  '+(f1+f2).toFixed(0)+' m³/hr') +
+    R('OA Load เพิ่มขึ้น', (m1*(s1.h-s2.h)).toFixed(2)+' kW');
+}
+
+/* ============ INIT ============ */
+afToggle(); achToggle(); psyToggle();
 </script>
 </body>
 </html>
