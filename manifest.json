@@ -1,0 +1,15 @@
+{
+  "name": "ACTool HVAC Service",
+  "short_name": "ACTool",
+  "description": "เครื่องคำนวณ Approach / Superheat / Subcool / Capacity / Psychrometric / COP / Calibration สำหรับช่าง HVAC",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1420",
+  "theme_color": "#0d1420",
+  "icons": [
+    { "src": "logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "logo-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
